@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Threading.Tasks;
+using Npgsql;
 
 namespace Respawn.Postgres
 {
@@ -53,7 +54,7 @@ namespace Respawn.Postgres
             }
 
             var cacheDatabaseExists = PostgresHelper.GetDatabaseExists(connectionString, cacheDatabaseName);
-            var cacheDatabaseIsOutdated = cacheDatabaseExists && true; // TODO:
+            var cacheDatabaseIsOutdated = !CheckCacheDatabaseIsUpToDate(connectionString, cacheDatabaseName);
 
             if (cacheDatabaseExists && !cacheDatabaseIsOutdated)
             {
@@ -70,6 +71,21 @@ namespace Respawn.Postgres
 
             // Clear the connection pools because there may be connections in them which were broken by a PostgresHelper.CloseClientConnections call.
             PostgresHelper.ClearAllPools();
+        }
+
+        private static bool CheckCacheDatabaseIsUpToDate(string connectionString, string cacheDatabaseName)
+        {
+            var connectionStringBuilder = new NpgsqlConnectionStringBuilder(connectionString)
+            {
+                Database = cacheDatabaseName
+            };
+
+            var cacheDatabaseConnectionString = connectionStringBuilder.ConnectionString;
+
+            var databaseStructureHash = PostgresHelper.GetDatabaseStructureHash(connectionString);
+            var cacheDatabaseStructureHash = PostgresHelper.GetDatabaseStructureHash(cacheDatabaseConnectionString);
+
+            return databaseStructureHash == cacheDatabaseStructureHash;
         }
 
         private static void CreatePostgresExtensions(string connectionString)
