@@ -1,0 +1,11 @@
+version: '3'
+
+services:
+    postgres-db:
+        image: postgres
+        restart: always
+        environment:
+            POSTGRES_USER: docker
+            POSTGRES_PASSWORD: Password12!
+        ports:
+            - 8099:5432

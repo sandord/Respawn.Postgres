@@ -1,0 +1,41 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <Description>Intelligent checkpoints for database tests providing enhanced Postgres performance</Description>
+    <Copyright>Copyright Sandor Drieënhuizen</Copyright>
+    <VersionPrefix>1.0.0</VersionPrefix>
+    <Authors>Sandor Drieënhuizen</Authors>
+    <TargetFrameworks>net452;netstandard1.3;netstandard2.0</TargetFrameworks>
+    <AssemblyName>Respawn.Postgres</AssemblyName>
+    <PackageId>Respawn.Postgres</PackageId>
+    <PackageTags>tests;integration tests;database tests</PackageTags>
+    <PackageProjectUrl>https://github.com/sandord/Respawn.Postgres</PackageProjectUrl>
+    <PackageLicenseUrl>https://github.com/sandord/Respawn.Postgres/blob/master/LICENSE</PackageLicenseUrl>
+    <RepositoryType>git</RepositoryType>
+    <RepositoryUrl>git://github.com/sandord/respawn.postgres</RepositoryUrl>
+    <PackageIconUrl>https://github.com/sandord/respawn.postgres/raw/master/logo.png</PackageIconUrl>
+    <LangVersion>latest</LangVersion>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="System.ValueTuple" Version="4.5.0" />
+  </ItemGroup>
+  
+  <ItemGroup Condition=" '$(TargetFramework)' == 'net452' ">
+    <Reference Include="System" />
+    <Reference Include="System.Data" />
+    <Reference Include="Microsoft.CSharp" />
+  </ItemGroup>
+  <ItemGroup Condition=" '$(TargetFramework)' == 'netstandard1.3' ">
+    <PackageReference Include="System.Data.Common" Version="4.3.0" />
+    <PackageReference Include="System.Linq" Version="4.3.0" />
+    <PackageReference Include="System.Runtime.Extensions" Version="4.3.0" />
+  </ItemGroup>
+  <ItemGroup Condition=" '$(TargetFramework)' == 'netstandard2.0' ">
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="Npgsql" Version="3.2.7" />
+    <PackageReference Include="Respawn" Version="3.0.1" />
+  </ItemGroup>
+
+</Project>
