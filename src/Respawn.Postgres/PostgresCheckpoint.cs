@@ -53,27 +53,27 @@ namespace Respawn.Postgres
                 CreatePostgresExtensions(connectionString);
             }
 
-            var cacheDatabaseExists = PostgresHelper.GetDatabaseExists(connectionString, cacheDatabaseName);
+            var cacheDatabaseExists = PostgresHelper.GetDatabaseExists(connectionString, cacheDatabaseName, CommandTimeout);
             var cacheDatabaseIsOutdated = !CheckCacheDatabaseIsUpToDate(connectionString, cacheDatabaseName);
 
             if (cacheDatabaseExists && !cacheDatabaseIsOutdated)
             {
                 // Copy cache database onto main database.
-                PostgresHelper.CopyDatabaseIfNotExists(connectionString, databaseName, cacheDatabaseName);
+                PostgresHelper.CopyDatabaseIfNotExists(connectionString, databaseName, cacheDatabaseName, CommandTimeout);
             }
             else
             {
                 await _checkpoint.Value.Reset(connectionString);
 
                 // Copy main database onto cache database.
-                PostgresHelper.CopyDatabaseIfNotExists(connectionString, cacheDatabaseName);
+                PostgresHelper.CopyDatabaseIfNotExists(connectionString, cacheDatabaseName, commandTimeout: CommandTimeout);
             }
 
             // Clear the connection pools because there may be connections in them which were broken by a PostgresHelper.CloseClientConnections call.
             PostgresHelper.ClearAllPools();
         }
 
-        private static bool CheckCacheDatabaseIsUpToDate(string connectionString, string cacheDatabaseName)
+        private bool CheckCacheDatabaseIsUpToDate(string connectionString, string cacheDatabaseName)
         {
             var connectionStringBuilder = new NpgsqlConnectionStringBuilder(connectionString)
             {
@@ -82,15 +82,15 @@ namespace Respawn.Postgres
 
             var cacheDatabaseConnectionString = connectionStringBuilder.ConnectionString;
 
-            var databaseStructureHash = PostgresHelper.GetDatabaseStructureHash(connectionString);
-            var cacheDatabaseStructureHash = PostgresHelper.GetDatabaseStructureHash(cacheDatabaseConnectionString);
+            var databaseStructureHash = PostgresHelper.GetDatabaseStructureHash(connectionString, CommandTimeout);
+            var cacheDatabaseStructureHash = PostgresHelper.GetDatabaseStructureHash(cacheDatabaseConnectionString, CommandTimeout);
 
             return databaseStructureHash == cacheDatabaseStructureHash;
         }
 
-        private static void CreatePostgresExtensions(string connectionString)
+        private void CreatePostgresExtensions(string connectionString)
         {
-            PostgresHelper.CreateExtensionIfNotExists(connectionString, "dblink");
+            PostgresHelper.CreateExtensionIfNotExists(connectionString, "dblink", CommandTimeout);
         }
     }
 }

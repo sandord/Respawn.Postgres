@@ -49,6 +49,10 @@ namespace Respawn.Postgres.IntegrationTests
         [SkipOnAppVeyor]
         public async Task ShouldCreateCacheDatabase()
         {
+            var cp = new PostgresCheckpoint
+            {
+                
+            };
             // TODO:
         }
     }
