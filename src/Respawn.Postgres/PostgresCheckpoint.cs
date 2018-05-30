@@ -8,37 +8,40 @@ namespace Respawn.Postgres
     {
         public const string CacheDatabasePostfix = "__respawn_cache";
 
-        private readonly Lazy<Checkpoint> _checkpoint;
+        private readonly Checkpoint _checkpoint;
 
         public string[] TablesToIgnore
         {
-            get => _checkpoint.Value.TablesToIgnore;
-            set => _checkpoint.Value.TablesToIgnore = value;
+            get => _checkpoint.TablesToIgnore;
+            set => _checkpoint.TablesToIgnore = value;
         }
 
         public string[] SchemasToInclude
         {
-            get => _checkpoint.Value.SchemasToInclude;
-            set => _checkpoint.Value.SchemasToInclude = value;
+            get => _checkpoint.SchemasToInclude;
+            set => _checkpoint.SchemasToInclude = value;
         }
 
         public string[] SchemasToExclude
         {
-            get => _checkpoint.Value.SchemasToExclude;
-            set => _checkpoint.Value.SchemasToExclude = value;
+            get => _checkpoint.SchemasToExclude;
+            set => _checkpoint.SchemasToExclude = value;
         }
 
         public int? CommandTimeout
         {
-            get => _checkpoint.Value.CommandTimeout;
-            set => _checkpoint.Value.CommandTimeout = value;
+            get => _checkpoint.CommandTimeout;
+            set => _checkpoint.CommandTimeout = value;
         }
 
         public bool AutoCreateExtensions { get; set; }
 
         public PostgresCheckpoint()
         {
-            _checkpoint = new Lazy<Checkpoint>();
+            _checkpoint = new Checkpoint
+            {
+                DbAdapter = DbAdapter.Postgres
+            };
         }
 
         public async Task Reset(string connectionString)
@@ -54,16 +57,16 @@ namespace Respawn.Postgres
             }
 
             var cacheDatabaseExists = PostgresHelper.GetDatabaseExists(connectionString, cacheDatabaseName, CommandTimeout);
-            var cacheDatabaseIsOutdated = !CheckCacheDatabaseIsUpToDate(connectionString, cacheDatabaseName);
+            var cacheDatabaseIsUpToDate = cacheDatabaseExists && CheckCacheDatabaseIsUpToDate(connectionString, cacheDatabaseName);
 
-            if (cacheDatabaseExists && !cacheDatabaseIsOutdated)
+            if (cacheDatabaseExists && cacheDatabaseIsUpToDate)
             {
                 // Copy cache database onto main database.
                 PostgresHelper.CopyDatabaseIfNotExists(connectionString, databaseName, cacheDatabaseName, CommandTimeout);
             }
             else
             {
-                await _checkpoint.Value.Reset(connectionString);
+                await ResetDatabase(connectionString);
 
                 // Copy main database onto cache database.
                 PostgresHelper.CopyDatabaseIfNotExists(connectionString, cacheDatabaseName, commandTimeout: CommandTimeout);
@@ -71,6 +74,11 @@ namespace Respawn.Postgres
 
             // Clear the connection pools because there may be connections in them which were broken by a PostgresHelper.CloseClientConnections call.
             PostgresHelper.ClearAllPools();
+        }
+
+        private void CreatePostgresExtensions(string connectionString)
+        {
+            PostgresHelper.CreateExtensionIfNotExists(connectionString, "dblink", CommandTimeout);
         }
 
         private bool CheckCacheDatabaseIsUpToDate(string connectionString, string cacheDatabaseName)
@@ -88,9 +96,13 @@ namespace Respawn.Postgres
             return databaseStructureHash == cacheDatabaseStructureHash;
         }
 
-        private void CreatePostgresExtensions(string connectionString)
+        private async Task ResetDatabase(string connectionString)
         {
-            PostgresHelper.CreateExtensionIfNotExists(connectionString, "dblink", CommandTimeout);
+            using (var connection = new NpgsqlConnection(connectionString))
+            {
+                await connection.OpenAsync();
+                await _checkpoint.Reset(connection);
+            }
         }
     }
 }

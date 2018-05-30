@@ -36,16 +36,9 @@ private static PostgresCheckpoint checkpoint = new PostgresCheckpoint
 {
     AutoCreateExtensions = true,
 
-    TablesToIgnore = new[]
+    SchemasToInclude = new[]
     {
-        "sysdiagrams",
-        "tblUser",
-        "tblObjectType",
-    },
-
-    SchemasToExclude = new []
-    {
-        "RoundhousE"
+        "public"
     }
 };
 ```

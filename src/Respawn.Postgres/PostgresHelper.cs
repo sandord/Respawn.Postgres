@@ -57,7 +57,7 @@ namespace Respawn.Postgres
             connectionStringBuilder.Database = PostgresSystemDatabase;
             var systemConnectionString = connectionStringBuilder.ConnectionString;
 
-            if (!GetDatabaseExistsInternal(targetDatabaseName, systemConnectionString, commandTimeout))
+            if (!GetDatabaseExistsInternal(systemConnectionString, targetDatabaseName, commandTimeout))
             {
                 CloseClientConnections(systemConnectionString, sourceDatabaseName, commandTimeout);
                 CloseClientConnections(systemConnectionString, targetDatabaseName, commandTimeout);
@@ -87,7 +87,7 @@ namespace Respawn.Postgres
             }
         }
 
-        internal static long GetDatabaseStructureHash(string connectionString, int? commandTimeout = null)
+        internal static decimal GetDatabaseStructureHash(string connectionString, int? commandTimeout = null)
         {
             using (var connection = new NpgsqlConnection(connectionString))
             {
@@ -262,7 +262,7 @@ namespace Respawn.Postgres
                             LEFT JOIN pg_constraint p ON p.conrelid = c.oid AND f.attnum = ANY (p.conkey)  
                             LEFT JOIN pg_class AS g ON p.confrelid = g.oid;";
 
-                    return (long)(command.ExecuteScalar() ?? throw new InvalidOperationException("Could not determine database structure hash."));
+                    return (decimal)(command.ExecuteScalar() ?? throw new InvalidOperationException("Could not determine database structure hash."));
                 }
             }
         }
@@ -349,7 +349,7 @@ namespace Respawn.Postgres
                         command.CommandTimeout = commandTimeout.Value;
                     }
 
-                    command.CommandText = $"create database {targetDatabaseName} template {sourceDatabaseName};";
+                    command.CommandText = $"create database \"{targetDatabaseName}\" template \"{sourceDatabaseName}\";";
                     command.ExecuteNonQuery();
                 }
             }

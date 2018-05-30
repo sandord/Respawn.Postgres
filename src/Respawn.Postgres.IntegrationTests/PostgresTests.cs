@@ -9,29 +9,31 @@ namespace Respawn.Postgres.IntegrationTests
 {
     public class PostgresTests : IAsyncLifetime
     {
+        private const string RootConnString = "Server=127.0.0.1;Port=8099;User ID=docker;Password=Password12!;database=postgres";
+        private const string DbConnString = "Server=127.0.0.1;Port=8099;User ID=docker;Password=Password12!;database={0}";
+
         private readonly ITestOutputHelper _output;
         private NpgsqlConnection _connection;
         private Database _database;
+        private string _dbName;
 
         public PostgresTests(ITestOutputHelper output) => _output = output;
 
         public async Task InitializeAsync()
         {
-            var rootConnString = "Server=127.0.0.1;Port=8099;User ID=docker;Password=Password12!;database=postgres";
-            var dbConnString = "Server=127.0.0.1;Port=8099;User ID=docker;Password=Password12!;database={0}";
+            _dbName = DateTime.Now.ToString("yyyyMMddHHmmss") + Guid.NewGuid().ToString("N");
 
-            var dbName = DateTime.Now.ToString("yyyyMMddHHmmss") + Guid.NewGuid().ToString("N");
-            using (var connection = new NpgsqlConnection(rootConnString))
+            using (var connection = new NpgsqlConnection(RootConnString))
             {
                 connection.Open();
 
                 using (var cmd = connection.CreateCommand())
                 {
-                    cmd.CommandText = "create database \"" + dbName + "\"";
+                    cmd.CommandText = "create database \"" + _dbName + "\"";
                     await cmd.ExecuteNonQueryAsync();
                 }
             }
-            _connection = new NpgsqlConnection(string.Format(dbConnString, dbName));
+            _connection = new NpgsqlConnection(string.Format(DbConnString, _dbName));
             _connection.Open();
 
             _database = new Database(_connection, DatabaseType.PostgreSQL);
@@ -47,13 +49,20 @@ namespace Respawn.Postgres.IntegrationTests
         }
 
         [SkipOnAppVeyor]
-        public async Task ShouldCreateCacheDatabase()
+        public async Task ShouldResetTwiceWithoutErrors()
         {
-            var cp = new PostgresCheckpoint
+            var checkpoint = new PostgresCheckpoint
             {
-                
+                AutoCreateExtensions = true,
+                SchemasToInclude = new[] { "public" }
             };
-            // TODO:
+
+            var connectionString = string.Format(DbConnString, _dbName);
+
+            for (var i = 0; i < 2; i++)
+            {
+                await checkpoint.Reset(connectionString);
+            }
         }
     }
 }
