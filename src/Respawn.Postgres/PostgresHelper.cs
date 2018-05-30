@@ -54,8 +54,7 @@ namespace Respawn.Postgres
                 sourceDatabaseName = connectionStringBuilder.Database;
             }
 
-            // Create a connection string that connects to the system (postgres) database.
-            connectionStringBuilder.Database = "postgres";
+            connectionStringBuilder.Database = PostgresSystemDatabase;
             var systemConnectionString = connectionStringBuilder.ConnectionString;
 
             if (!GetDatabaseExistsInternal(targetDatabaseName, systemConnectionString))

@@ -68,7 +68,6 @@ namespace Respawn.Postgres
                 PostgresHelper.CopyDatabaseIfNotExists(connectionString, cacheDatabaseName);
             }
 
-
             // Clear the connection pools because there may be connections in them which were broken by a PostgresHelper.CloseClientConnections call.
             PostgresHelper.ClearAllPools();
         }
