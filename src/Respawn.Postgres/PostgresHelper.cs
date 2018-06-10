@@ -44,8 +44,7 @@ namespace Respawn.Postgres
             return GetDatabaseExistsInternal(systemConnectionString, databaseName, commandTimeout);
         }
 
-
-        internal static void CopyDatabaseIfNotExists(string connectionString, string targetDatabaseName, string sourceDatabaseName = null, int? commandTimeout = null)
+        internal static void CopyDatabase(string connectionString, string targetDatabaseName, string sourceDatabaseName = null, int? commandTimeout = null, bool autoCreateExtensions = false)
         {
             var connectionStringBuilder = new NpgsqlConnectionStringBuilder(connectionString);
 
@@ -57,13 +56,11 @@ namespace Respawn.Postgres
             connectionStringBuilder.Database = PostgresSystemDatabase;
             var systemConnectionString = connectionStringBuilder.ConnectionString;
 
-            if (!GetDatabaseExistsInternal(systemConnectionString, targetDatabaseName, commandTimeout))
-            {
-                CloseClientConnections(systemConnectionString, sourceDatabaseName, commandTimeout);
-                CloseClientConnections(systemConnectionString, targetDatabaseName, commandTimeout);
+            CloseClientConnections(systemConnectionString, sourceDatabaseName, commandTimeout);
+            CloseClientConnections(systemConnectionString, targetDatabaseName, commandTimeout);
 
-                CopyDatabaseInternal(systemConnectionString, targetDatabaseName, sourceDatabaseName, commandTimeout);
-            }
+            DropDatabaseIfExistsInternal(systemConnectionString, targetDatabaseName, commandTimeout, autoCreateExtensions);
+            CopyDatabaseInternal(systemConnectionString, targetDatabaseName, sourceDatabaseName, commandTimeout);
         }
 
         internal static void CreateExtensionIfNotExists(string connectionString, string extensionName, int? commandTimeout = null)
@@ -352,6 +349,38 @@ namespace Respawn.Postgres
                     command.CommandText = $"create database \"{targetDatabaseName}\" template \"{sourceDatabaseName}\";";
                     command.ExecuteNonQuery();
                 }
+            }
+        }
+
+        private static void DropDatabaseIfExistsInternal(string systemConnectionString, string databaseName, int? commandTimeout, bool autoCreateExtensions = false)
+        {
+            if (autoCreateExtensions)
+            {
+                CreateExtensionIfNotExists(systemConnectionString, "dblink", commandTimeout);
+            }
+
+            using (var connection = new NpgsqlConnection(systemConnectionString))
+            {
+                connection.Open();
+                
+                var command = connection.CreateCommand();
+
+                if (commandTimeout.HasValue)
+                {
+                    command.CommandTimeout = commandTimeout.Value;
+                }
+
+                command.CommandText = $@"
+                    do
+                    $$
+                    begin
+                        if exists (select 1 from pg_database where datname='{databaseName}') then
+                            perform dblink_exec('dbname=' || current_database(), 'drop database ""{databaseName}""');
+                        end if;
+                    end;
+                    $$";
+
+                command.ExecuteNonQuery();
             }
         }
     }

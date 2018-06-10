@@ -51,34 +51,24 @@ namespace Respawn.Postgres
             var databaseName = PostgresHelper.ExtractDatabaseName(connectionString);
             var cacheDatabaseName = databaseName + CacheDatabasePostfix;
 
-            if (AutoCreateExtensions)
-            {
-                CreatePostgresExtensions(connectionString);
-            }
-
             var cacheDatabaseExists = PostgresHelper.GetDatabaseExists(connectionString, cacheDatabaseName, CommandTimeout);
             var cacheDatabaseIsUpToDate = cacheDatabaseExists && CheckCacheDatabaseIsUpToDate(connectionString, cacheDatabaseName);
 
             if (cacheDatabaseExists && cacheDatabaseIsUpToDate)
             {
                 // Copy cache database onto main database.
-                PostgresHelper.CopyDatabaseIfNotExists(connectionString, databaseName, cacheDatabaseName, CommandTimeout);
+                PostgresHelper.CopyDatabase(connectionString, databaseName, cacheDatabaseName, CommandTimeout, AutoCreateExtensions);
             }
             else
             {
                 await ResetDatabase(connectionString);
 
                 // Copy main database onto cache database.
-                PostgresHelper.CopyDatabaseIfNotExists(connectionString, cacheDatabaseName, commandTimeout: CommandTimeout);
+                PostgresHelper.CopyDatabase(connectionString, cacheDatabaseName, commandTimeout: CommandTimeout, autoCreateExtensions: AutoCreateExtensions);
             }
 
             // Clear the connection pools because there may be connections in them which were broken by a PostgresHelper.CloseClientConnections call.
             PostgresHelper.ClearAllPools();
-        }
-
-        private void CreatePostgresExtensions(string connectionString)
-        {
-            PostgresHelper.CreateExtensionIfNotExists(connectionString, "dblink", CommandTimeout);
         }
 
         private bool CheckCacheDatabaseIsUpToDate(string connectionString, string cacheDatabaseName)
