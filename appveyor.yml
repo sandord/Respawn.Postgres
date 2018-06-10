@@ -1,0 +1,21 @@
+﻿version: '{build}'
+pull_requests:
+  do_not_increment_build_number: true
+image: Visual Studio 2017
+services:
+  - postgresql
+nuget:
+  disable_publish_on_pr: true
+build_script:
+- ps: .\Build.ps1
+test: off
+artifacts:
+- path: .\artifacts\*.nupkg
+  name: NuGet
+deploy:
+- provider: NuGet
+  name: production
+  api_key:
+    secure: D5UYfs6O8PlNh6bDC/NoUetta0IEwHwmkgi1lg2ffyVwYQlGZ6UMSAFUtD4nyi/g
+  on:
+    appveyor_repo_tag: true
