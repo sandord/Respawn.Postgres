@@ -15,6 +15,9 @@
     <RepositoryUrl>git://github.com/sandord/respawn.postgres</RepositoryUrl>
     <PackageIconUrl>https://github.com/sandord/respawn.postgres/raw/master/logo.png</PackageIconUrl>
     <LangVersion>latest</LangVersion>
+    <AssemblyVersion>1.0.0.0</AssemblyVersion>
+    <FileVersion>1.0.0.0</FileVersion>
+    <Version>1.0.0</Version>
   </PropertyGroup>
 
   <ItemGroup>

@@ -6,6 +6,14 @@ services:
   - postgresql
 nuget:
   disable_publish_on_pr: true
+dotnet_csproj:
+  patch: true
+  file: '**\*.csproj'
+  version: '{version}'
+  package_version: '{version}'
+  assembly_version: '{version}'
+  file_version: '{version}'
+  informational_version: '{version}'
 build_script:
 - ps: .\Build.ps1
 test: off
