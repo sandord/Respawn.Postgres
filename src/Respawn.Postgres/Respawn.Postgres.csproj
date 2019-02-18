@@ -5,7 +5,7 @@
     <Copyright>Copyright Sandor Drieënhuizen</Copyright>
     <VersionPrefix>1.0.0</VersionPrefix>
     <Authors>Sandor Drieënhuizen</Authors>
-    <TargetFrameworks>net452;netstandard1.3;netstandard2.0</TargetFrameworks>
+    <TargetFrameworks>net452;netstandard2.0</TargetFrameworks>
     <AssemblyName>Respawn.Postgres</AssemblyName>
     <PackageId>Respawn.Postgres</PackageId>
     <PackageTags>tests;integration tests;database tests</PackageTags>
@@ -32,8 +32,8 @@
     <PackageReference Include="System.Runtime.Extensions" Version="4.3.0" />
   </ItemGroup>
   <ItemGroup>
-    <PackageReference Include="Npgsql" Version="3.2.7" />
-    <PackageReference Include="Respawn" Version="3.0.1" />
+    <PackageReference Include="Npgsql" Version="4.0.4" />
+    <PackageReference Include="Respawn" Version="3.1.0" />
   </ItemGroup>
 
 </Project>

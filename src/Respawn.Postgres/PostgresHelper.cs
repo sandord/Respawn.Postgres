@@ -167,7 +167,6 @@ namespace Respawn.Postgres
                           ' ' || coalesce(g.relnatts::text, '') ||
                           ' ' || coalesce(g.relchecks::text, '') ||
                           ' ' || coalesce(g.relhasoids::text, '') ||
-                          ' ' || coalesce(g.relhaspkey::text, '') ||
                           ' ' || coalesce(g.relhasrules::text, '') ||
                           ' ' || coalesce(g.relhastriggers::text, '') ||
                           ' ' || coalesce(g.relhassubclass::text, '') ||
@@ -203,7 +202,6 @@ namespace Respawn.Postgres
                           ' ' || coalesce(c.relnatts::text, '') ||
                           ' ' || coalesce(c.relchecks::text, '') ||
                           ' ' || coalesce(c.relhasoids::text, '') ||
-                          ' ' || coalesce(c.relhaspkey::text, '') ||
                           ' ' || coalesce(c.relhasrules::text, '') ||
                           ' ' || coalesce(c.relhastriggers::text, '') ||
                           ' ' || coalesce(c.relhassubclass::text, '') ||
@@ -362,7 +360,7 @@ namespace Respawn.Postgres
             using (var connection = new NpgsqlConnection(systemConnectionString))
             {
                 connection.Open();
-                
+
                 var command = connection.CreateCommand();
 
                 if (commandTimeout.HasValue)
@@ -370,17 +368,14 @@ namespace Respawn.Postgres
                     command.CommandTimeout = commandTimeout.Value;
                 }
 
-                command.CommandText = $@"
-                    do
-                    $$
-                    begin
-                        if exists (select 1 from pg_database where datname='{databaseName}') then
-                            perform dblink_exec('dbname=' || current_database(), 'drop database ""{databaseName}""');
-                        end if;
-                    end;
-                    $$";
+                command.CommandText = $"select exists (select 1 from pg_database where datname='{databaseName}')";
+                var result = (bool)command.ExecuteScalar();
 
-                command.ExecuteNonQuery();
+                if (result)
+                {
+                    command.CommandText = $"drop database \"{databaseName}\"";
+                    command.ExecuteNonQuery();
+                }
             }
         }
     }
