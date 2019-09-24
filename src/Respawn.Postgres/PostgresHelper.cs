@@ -133,8 +133,6 @@ namespace Respawn.Postgres
                 }
             }
 
-            Debug.Assert(columns.Count == 136, "Not all columns were read!");
-
             return columns;
         }
 
