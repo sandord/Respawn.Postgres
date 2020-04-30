@@ -25,4 +25,5 @@ deploy:
   name: production
   api_key:
     secure: 3PspClnRqm7tKHHAVcB0yy1W/MRLVmZmMz8WTog58x0QC3FT3b/fV/1y4KwaLjha
-
+  on:
+    appveyor_repo_tag: true
