@@ -1,6 +1,8 @@
 # Respawn.Postgres
 Builds upon Jimmy Bogard's [Respawn](https://github.com/jbogard/Respawn) and provides enhanced performance for Postgres databases. Respawn is an intelligent database cleaner for integration tests.
 
+**IMPORTANT**: Recent versions of Respawn have shown great performance improvements regarding Postgres. I recommend trying Resapwn first and only consider using Respawn.Postgres if you find the performance of Respawn to be unacceptable. This will probably only be the case for databases with a large amount of tables.
+
 ## Introduction
 
 Respawn is a small utility to help in resetting test databases to a clean state. Instead of deleting data at the end of a test or rolling back a transaction, Respawn [resets the database back to a clean checkpoint](http://lostechies.com/jimmybogard/2013/06/18/strategies-for-isolating-the-database-in-tests/) by intelligently deleting data from tables.
