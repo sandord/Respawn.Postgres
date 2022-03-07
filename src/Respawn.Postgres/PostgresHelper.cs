@@ -118,18 +118,16 @@ namespace Respawn.Postgres
             ";
 
             var columns = new List<DatabaseColumn>();
-            using (var reader = command.ExecuteReader())
+            using var reader = command.ExecuteReader();
+            if (reader.HasRows)
             {
-                if (reader.HasRows)
+                while (reader.Read())
                 {
-                    while (reader.Read())
+                    columns.Add(new DatabaseColumn
                     {
-                        columns.Add(new DatabaseColumn
-                        {
-                            TableName = reader.GetString(0),
-                            ColumnName = reader.GetString(1)
-                        });
-                    }
+                        TableName = reader.GetString(0),
+                        ColumnName = reader.GetString(1)
+                    });
                 }
             }
 
@@ -138,47 +136,45 @@ namespace Respawn.Postgres
 
         internal static decimal GetDatabaseStructureHash(string connectionString, int? commandTimeout = null)
         {
-            using (var connection = new NpgsqlConnection(connectionString))
+            using var connection = new NpgsqlConnection(connectionString);
+            connection.Open();
+
+            using var command = connection.CreateCommand();
+            if (commandTimeout.HasValue)
             {
-                connection.Open();
+                command.CommandTimeout = commandTimeout.Value;
+            }
 
-                using (var command = connection.CreateCommand())
+            var columns = GetDatabaseColumns(command);
+
+            var builder = new StringBuilder();
+            builder.AppendLine("SELECT SUM(('x' || md5(");
+
+            // We use a fixed order for types and then sort their columns by name
+            // to ensure consistency between queries
+
+            var first = true;
+            foreach (var item in _columnQueryOrder)
+            {
+                var sorted = columns.Where(x => item.Value.Equals(x.TableName, StringComparison.OrdinalIgnoreCase))
+                    .OrderBy(x => x.ColumnName)
+                    .ToList();
+
+                foreach (var column in sorted)
                 {
-                    if (commandTimeout.HasValue)
+                    if (first)
                     {
-                        command.CommandTimeout = commandTimeout.Value;
+                        builder.AppendFormat("\n\t\tcoalesce({0}.{1}::text, '')", item.Key, column.ColumnName);
+                        first = false;
                     }
-
-                    var columns = GetDatabaseColumns(command);
-
-                    var builder = new StringBuilder();
-                    builder.AppendLine("SELECT SUM(('x' || md5(");
-
-                    // We use a fixed order for types and then sort their columns by name
-                    // to ensure consistency between queries
-
-                    var first = true;
-                    foreach (var item in _columnQueryOrder)
+                    else
                     {
-                        var sorted = columns.Where(x => item.Value.Equals(x.TableName, StringComparison.OrdinalIgnoreCase))
-                            .OrderBy(x => x.ColumnName)
-                            .ToList();
-
-                        foreach (var column in sorted)
-                        {
-                            if (first)
-                            {
-                                builder.AppendFormat("\n\t\tcoalesce({0}.{1}::text, '')", item.Key, column.ColumnName);
-                                first = false;
-                            }
-                            else
-                            {
-                                builder.AppendFormat("\n\t\t|| ' ' || coalesce({0}.{1}::text, '')", item.Key, column.ColumnName);
-                            }
-                        }
+                        builder.AppendFormat("\n\t\t|| ' ' || coalesce({0}.{1}::text, '')", item.Key, column.ColumnName);
                     }
+                }
+            }
 
-                    builder.AppendLine(@"
+            builder.AppendLine(@"
     ))::bit(64)::bigint)
 FROM pg_attribute f
 JOIN pg_class c ON c.oid = f.attrelid
@@ -188,11 +184,9 @@ LEFT JOIN pg_namespace n ON n.oid = c.relnamespace
 LEFT JOIN pg_constraint p ON p.conrelid = c.oid AND f.attnum = ANY (p.conkey)  
 LEFT JOIN pg_class AS g ON p.confrelid = g.oid;");
 
-                    command.CommandText = builder.ToString();
+            command.CommandText = builder.ToString();
 
-                    return (decimal)(command.ExecuteScalar() ?? throw new InvalidOperationException("Could not determine database structure hash."));
-                }
-            }
+            return (decimal)(command.ExecuteScalar() ?? throw new InvalidOperationException("Could not determine database structure hash."));
         }
 
         internal static void ClearAllPools() => NpgsqlConnection.ClearAllPools();
@@ -209,21 +203,17 @@ LEFT JOIN pg_class AS g ON p.confrelid = g.oid;");
         {
             ValidateDatabaseEntityName(databaseName);
 
-            using (var connection = new NpgsqlConnection(systemConnectionString))
+            using var connection = new NpgsqlConnection(systemConnectionString);
+            connection.Open();
+
+            using var command = connection.CreateCommand();
+            if (commandTimeout.HasValue)
             {
-                connection.Open();
-
-                using (var command = connection.CreateCommand())
-                {
-                    if (commandTimeout.HasValue)
-                    {
-                        command.CommandTimeout = commandTimeout.Value;
-                    }
-
-                    command.CommandText = $"SELECT 1 FROM pg_database WHERE datname='{databaseName}';";
-                    return command.ExecuteScalar() != null;
-                }
+                command.CommandTimeout = commandTimeout.Value;
             }
+
+            command.CommandText = $"SELECT 1 FROM pg_database WHERE datname='{databaseName}';";
+            return command.ExecuteScalar() != null;
         }
 
         private static void CloseClientConnections(string connectionString, string databaseName, int? commandTimeout)
@@ -240,25 +230,21 @@ LEFT JOIN pg_class AS g ON p.confrelid = g.oid;");
 
             ValidateDatabaseEntityName(databaseName);
 
-            using (var connection = new NpgsqlConnection(systemConnectionString))
+            using var connection = new NpgsqlConnection(systemConnectionString);
+            connection.Open();
+
+            using var command = connection.CreateCommand();
+            if (commandTimeout.HasValue)
             {
-                connection.Open();
+                command.CommandTimeout = commandTimeout.Value;
+            }
 
-                using (var command = connection.CreateCommand())
-                {
-                    if (commandTimeout.HasValue)
-                    {
-                        command.CommandTimeout = commandTimeout.Value;
-                    }
-
-                    command.CommandText = $@"
+            command.CommandText = $@"
                         select pg_terminate_backend(pg_stat_activity.pid)
                         from pg_stat_activity
                         where pg_stat_activity.datname = '{databaseName}' and pid<> pg_backend_pid();";
 
-                    command.ExecuteNonQuery();
-                }
-            }
+            command.ExecuteNonQuery();
         }
 
         private static void CopyDatabaseInternal(string systemConnectionString, string targetDatabaseName, string sourceDatabaseName, int? commandTimeout)
@@ -266,21 +252,17 @@ LEFT JOIN pg_class AS g ON p.confrelid = g.oid;");
             ValidateDatabaseEntityName(targetDatabaseName);
             ValidateDatabaseEntityName(sourceDatabaseName);
 
-            using (var connection = new NpgsqlConnection(systemConnectionString))
+            using var connection = new NpgsqlConnection(systemConnectionString);
+            connection.Open();
+
+            using var command = connection.CreateCommand();
+            if (commandTimeout.HasValue)
             {
-                connection.Open();
-
-                using (var command = connection.CreateCommand())
-                {
-                    if (commandTimeout.HasValue)
-                    {
-                        command.CommandTimeout = commandTimeout.Value;
-                    }
-
-                    command.CommandText = $"create database \"{targetDatabaseName}\" template \"{sourceDatabaseName}\";";
-                    command.ExecuteNonQuery();
-                }
+                command.CommandTimeout = commandTimeout.Value;
             }
+
+            command.CommandText = $"create database \"{targetDatabaseName}\" template \"{sourceDatabaseName}\";";
+            command.ExecuteNonQuery();
         }
 
         private static void DropDatabaseIfExistsInternal(string systemConnectionString, string databaseName, int? commandTimeout, bool autoCreateExtensions = false)
@@ -290,25 +272,23 @@ LEFT JOIN pg_class AS g ON p.confrelid = g.oid;");
                 CreateExtensionIfNotExists(systemConnectionString, "dblink", commandTimeout);
             }
 
-            using (var connection = new NpgsqlConnection(systemConnectionString))
+            using var connection = new NpgsqlConnection(systemConnectionString);
+            connection.Open();
+
+            var command = connection.CreateCommand();
+
+            if (commandTimeout.HasValue)
             {
-                connection.Open();
+                command.CommandTimeout = commandTimeout.Value;
+            }
 
-                var command = connection.CreateCommand();
-
-                if (commandTimeout.HasValue)
-                {
-                    command.CommandTimeout = commandTimeout.Value;
-                }
-
-                command.CommandText = $"select exists (select 1 from pg_database where datname='{databaseName}')";
-                // ReSharper disable once PossibleNullReferenceException
-                var result = (bool)command.ExecuteScalar();
-                if (result)
-                {
-                    command.CommandText = $"drop database \"{databaseName}\"";
-                    command.ExecuteNonQuery();
-                }
+            command.CommandText = $"select exists (select 1 from pg_database where datname='{databaseName}')";
+            // ReSharper disable once PossibleNullReferenceException
+            var result = (bool)command.ExecuteScalar();
+            if (result)
+            {
+                command.CommandText = $"drop database \"{databaseName}\"";
+                command.ExecuteNonQuery();
             }
         }
 

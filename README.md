@@ -35,14 +35,13 @@ To use, create a `PostgresCheckpoint` and initialize with tables you want to ski
 
 ```csharp
 private static PostgresCheckpoint checkpoint = new PostgresCheckpoint
-{
-    AutoCreateExtensions = true,
-
-    SchemasToInclude = new[]
+(
+    autoCreateExtensions: true,
+    schemasToInclude: new[]
     {
         "public"
     }
-};
+);
 ```
 
 In your tests, in the fixture setup, reset your checkpoint:

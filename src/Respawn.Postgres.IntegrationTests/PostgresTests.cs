@@ -23,16 +23,13 @@ namespace Respawn.Postgres.IntegrationTests
         {
             _dbName = DateTime.Now.ToString("yyyyMMddHHmmss") + Guid.NewGuid().ToString("N");
 
-            using (var connection = new NpgsqlConnection(RootConnString))
-            {
-                connection.Open();
+            using var connection = new NpgsqlConnection(RootConnString);
+            connection.Open();
 
-                using (var cmd = connection.CreateCommand())
-                {
-                    cmd.CommandText = "create database \"" + _dbName + "\"";
-                    await cmd.ExecuteNonQueryAsync();
-                }
-            }
+            using var cmd = connection.CreateCommand();
+            cmd.CommandText = "create database \"" + _dbName + "\"";
+            await cmd.ExecuteNonQueryAsync();
+
             _connection = new NpgsqlConnection(string.Format(DbConnString, _dbName));
             _connection.Open();
 
@@ -51,11 +48,10 @@ namespace Respawn.Postgres.IntegrationTests
         [SkipOnAppVeyor]
         public async Task ShouldResetTwiceWithoutErrors()
         {
-            var checkpoint = new PostgresCheckpoint
-            {
-                AutoCreateExtensions = true,
-                SchemasToInclude = new[] { "public" }
-            };
+            var checkpoint = new PostgresCheckpoint(
+                schemasToInclude:new[] { "public" }, 
+                autoCreateExtensions: true
+            );
 
             var connectionString = string.Format(DbConnString, _dbName);
 
